@@ -1,5 +1,12 @@
 # go-reseed
 
+> [!WARNING]
+> **Work in progress. Not ready for production.**
+>
+> go-reseed has only been tested against the throwaway Docker lab in `testlab/`. It has not yet
+> been tried on real servers. Its `wipe` step **permanently deletes the replica's datadir**, so
+> don't point it at a system you care about. Interfaces and flags may still change.
+
 **Rebuild a MySQL 8.0 replica from a live source with one command.**
 
 `go-reseed` streams a [Percona XtraBackup 8.0](https://docs.percona.com/percona-xtrabackup/8.0/)
