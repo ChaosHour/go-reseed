@@ -1,0 +1,5 @@
+/bin/
+*.log
+testlab/.ssh/
+testlab/known_hosts
+/go-reseed

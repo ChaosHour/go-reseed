@@ -1,0 +1,40 @@
+# Runs the test suites in containers.
+#
+#   docker compose -f docker-compose.test.yml run --rm --build unit
+#   docker compose -f docker-compose.test.yml run --rm --build integration
+#   docker compose -f docker-compose.test.yml down -v
+#
+# `make test-docker` and `make test-integration` wrap these commands.
+# The integration test runs inside the lab network, so it reaches the source and replica by
+# name on ports 22 and 3306 and doesn't need any published ports.
+name: go-reseed-lab
+
+include:
+  - testlab/docker-compose.yml
+
+x-runner: &runner
+  build:
+    context: .
+    dockerfile: Dockerfile.test
+  image: go-reseed-test
+
+services:
+  unit:
+    <<: *runner
+    command: ["sh", "-c", "go vet ./... && go test -race -count=1 ./..."]
+
+  integration:
+    <<: *runner
+    depends_on:
+      source: { condition: service_healthy }
+      replica: { condition: service_healthy }
+    environment:
+      LAB_SOURCE: source
+      LAB_REPLICA: replica
+      LAB_SSH_KEY: /lab/ssh/id_ed25519
+      LAB_ROOT_PASSWORD: ${LAB_ROOT_PASSWORD:-lab-root-pw}
+      LAB_REPL_PASSWORD: ${LAB_REPL_PASSWORD:-lab-repl-pw}
+      LAB_VERBOSE: ${LAB_VERBOSE:-}
+    volumes:
+      - ./testlab/.ssh:/lab/ssh:ro
+    command: ["go", "test", "-tags", "integration", "-count=1", "-v", "-timeout", "15m", "./test/integration/"]

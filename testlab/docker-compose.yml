@@ -1,0 +1,33 @@
+# Throwaway source/replica pair for testing go-reseed end to end.
+# Only SSH is published: go-reseed reaches MySQL through its SSH tunnel.
+name: go-reseed-lab
+
+x-host: &host
+  build: .
+  image: go-reseed-lab
+  environment:
+    MYSQL_ROOT_PASSWORD: ${LAB_ROOT_PASSWORD:-lab-root-pw}
+    MYSQL_REPL_PASSWORD: ${LAB_REPL_PASSWORD:-lab-repl-pw}
+  # Healthy once root's password and the repl user exist, not merely when mysqld answers.
+  healthcheck:
+    test: ["CMD-SHELL", "mysql -N -e \"SELECT 1 FROM mysql.user WHERE user = 'repl'\" | grep -q 1"]
+    interval: 2s
+    timeout: 5s
+    retries: 90
+
+services:
+  source:
+    <<: *host
+    hostname: source
+    ports: ["127.0.0.1:2221:22"]
+    volumes:
+      - ./conf/source.cnf:/etc/mysql/conf.d/lab.cnf:ro
+      - ./.ssh/id_ed25519.pub:/lab/authorized_keys:ro
+
+  replica:
+    <<: *host
+    hostname: replica
+    ports: ["127.0.0.1:2222:22"]
+    volumes:
+      - ./conf/replica.cnf:/etc/mysql/conf.d/lab.cnf:ro
+      - ./.ssh/id_ed25519.pub:/lab/authorized_keys:ro

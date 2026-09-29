@@ -1,0 +1,37 @@
+#!/bin/bash
+# mysqlctl start|stop|status — stands in for systemctl, since the lab has no systemd.
+set -euo pipefail
+
+pidfile=/var/run/mysqld/mysqld.pid
+
+running() { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
+
+case "${1:-}" in
+start)
+	running && exit 0
+	mysqld --daemonize --user=mysql >/dev/null
+	for _ in $(seq 120); do
+		mysqladmin --no-defaults --socket=/var/run/mysqld/mysqld.sock ping --silent >/dev/null 2>&1 && exit 0
+		sleep 1
+	done
+	echo "mysqld did not start; see /var/log/mysqld.log" >&2
+	exit 1
+	;;
+stop)
+	running || exit 0
+	kill "$(cat "$pidfile")"
+	for _ in $(seq 120); do
+		running || exit 0
+		sleep 1
+	done
+	echo "mysqld did not stop" >&2
+	exit 1
+	;;
+status)
+	running
+	;;
+*)
+	echo "usage: mysqlctl start|stop|status" >&2
+	exit 2
+	;;
+esac
